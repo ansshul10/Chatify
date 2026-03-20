@@ -10,16 +10,18 @@ export const generateTokenAndSetCookie = (res, userId, rememberMe = false) => {
     { expiresIn }
   );
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.cookie("chatify_token", token, {
-    httpOnly:  true,                                      // JS cannot access
-    secure:    process.env.NODE_ENV === "production",     // HTTPS only in prod
-    sameSite:  process.env.NODE_ENV === "production"
-               ? "Strict"
-               : "Lax",                                   // Lax for dev (cross-port)
-    maxAge:    rememberMe
-               ? 30 * 24 * 60 * 60 * 1000               // 30 days
-               : 7  * 24 * 60 * 60 * 1000,               // 7 days
-    path:      "/",
+    httpOnly: true,                   // Prevents JavaScript access (security)
+    secure: isProduction,             // Must be true in production (HTTPS only)
+    sameSite: isProduction ? "none" : "lax",   // "none" required for cross-site
+    maxAge: rememberMe
+      ? 30 * 24 * 60 * 60 * 1000      // 30 days
+      : 7 * 24 * 60 * 60 * 1000,      // 7 days
+    path: "/",                        // Available across the entire site
+    // NEVER set domain here when frontend & backend are on different TLDs
+    // (vercel.app vs onrender.com) — it will break cookie setting
   });
 
   return token;
@@ -39,13 +41,15 @@ export const verifyToken = (token) => {
   return jwt.verify(token, process.env.JWT_SECRET);
 };
 
-// ── Clear Cookie ──────────────────────────────────────────────────────────────
+// ── Clear Cookie on Logout ───────────────────────────────────────────────────
 export const clearAuthCookie = (res) => {
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.cookie("chatify_token", "", {
     httpOnly: true,
-    secure:   process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax",
-    maxAge:   0,
-    path:     "/",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 0,
+    path: "/",
   });
 };
