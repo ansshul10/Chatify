@@ -24,12 +24,12 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Allowed origins (production + development)
+// ✅ Allowed origins array (env + hardcoded fallback)
 const allowedOrigins = [
-  process.env.CLIENT_URL,                    // https://chatify007.vercel.app
-  "http://localhost:5173",                   // local dev
-  "https://chatify007.vercel.app",           // direct
-  // agar preview branches hain to aur add kar sakte ho
+  process.env.CLIENT_URL || "https://chatify007.vercel.app",
+  process.env.FRONTEND_URL || "https://chatify007.vercel.app",
+  "http://localhost:5173",
+  "https://chatify007.vercel.app"
 ];
 
 // ─── SOCKET.IO SETUP ──────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ const io = new Server(server, {
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log(`CORS blocked origin: ${origin}`);
+        console.log(`🔒 Socket CORS blocked: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -50,10 +50,13 @@ const io = new Server(server, {
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   },
-  path: "/socket.io/",  // default, but explicit rakha
+  path: "/socket.io/",
+  transports: ['websocket', 'polling'],  // Render stability
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
-// Middleware: Socket Authentication (JWT from cookie)
+// Socket Authentication Middleware
 io.use((socket, next) => {
   try {
     const cookies = socket.handshake.headers.cookie || "";
@@ -63,16 +66,16 @@ io.use((socket, next) => {
       ?.split("=")[1];
 
     if (!token) {
-      console.log("Socket auth failed: No token");
+      console.log("🔐 Socket: No auth token");
       return next(new Error("Auth Error: No token"));
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.userId = decoded.userId;
-    console.log(`Socket authenticated for user: ${socket.userId}`);
+    console.log(`✅ Socket auth: User ${socket.userId}`);
     next();
   } catch (error) {
-    console.error("Socket JWT error:", error.message);
+    console.log("❌ Socket JWT error:", error.message);
     next(new Error("Auth Error: Invalid token"));
   }
 });
@@ -80,28 +83,22 @@ io.use((socket, next) => {
 app.set("socketio", io);
 
 io.on("connection", (socket) => {
-  console.log(`🔌 Live: User Connected (${socket.userId || "unauth"})`);
+  console.log(`🔌 Connected: User ${socket.userId}`);
   
-  // Join private room based on userId
-  if (socket.userId) {
-    socket.join(socket.userId);
-  }
+  // Auto-join private room
+  if (socket.userId) socket.join(socket.userId);
 
-  // Typing events
+  // Typing indicators
   socket.on("typing", ({ receiverId }) => {
-    if (receiverId) {
-      socket.to(receiverId).emit("display_typing", { senderId: socket.userId });
-    }
+    socket.to(receiverId).emit("display_typing", { senderId: socket.userId });
   });
 
   socket.on("stop_typing", ({ receiverId }) => {
-    if (receiverId) {
-      socket.to(receiverId).emit("hide_typing", { senderId: socket.userId });
-    }
+    socket.to(receiverId).emit("hide_typing", { senderId: socket.userId });
   });
 
   socket.on("disconnect", () => {
-    console.log(`🔌 Live: User Disconnected (${socket.userId || "unauth"})`);
+    console.log(`🔌 Disconnected: User ${socket.userId}`);
   });
 });
 // ──────────────────────────────────────────────────────────────────────────────
@@ -109,24 +106,25 @@ io.on("connection", (socket) => {
 // Global Middlewares
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
 
-// Request Logger (helpful for Render logs)
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`🔒 CORS blocked: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 200
+}));
+
+// Request Logger
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(`📡 ${new Date().toISOString()} ${req.method} ${req.originalUrl} [${req.ip}]`);
   next();
 });
 
@@ -142,34 +140,42 @@ app.use("/api/support", supportRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/admin", adminRoutes);
 
-// Health check for Render
+// Health endpoint for Render/Platform.sh
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", uptime: process.uptime() });
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// 404 & Error Handlers
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
+// Global Error Handler
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
-  console.error(`❌ Error ${status}: ${err.message} - Path: ${req.originalUrl}`);
-  res.status(status).json({ success: false, message: err.message || "Server Error" });
+  console.error(`💥 ERROR ${status} ${req.method} ${req.originalUrl}:`, err.message);
+  res.status(status).json({ 
+    success: false, 
+    message: err.message || "Internal Server Error" 
+  });
 });
 
-// Database & Server Start
+// 🚀 Start Server
 const PORT = process.env.PORT || 5000;
-mongoose
-  .connect(process.env.MONGO_URI)
+
+mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log(`✅ MongoDB Connected`);
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📡 Socket.IO active on ${process.env.CLIENT_URL || "localhost"}`);
+    console.log("✅ MongoDB Connected");
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`\n🚀 Server: http://localhost:${PORT}`);
+      console.log(`📡 Socket.IO: Ready for ${allowedOrigins[0]}`);
+      console.log(`🌐 CORS Allowed: ${allowedOrigins.join(', ')}`);
+      console.log(`✅ All systems operational!\n`);
     });
   })
   .catch((err) => {
-    console.error("❌ DB Connection Error:", err.message);
+    console.error("💥 MongoDB Error:", err.message);
     process.exit(1);
   });
+
+export default app;  // Vercel support ke liye
