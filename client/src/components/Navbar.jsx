@@ -112,7 +112,7 @@ const Navbar = ({ theme, toggleTheme }) => {
       // Fetch Announcements History
       const fetchAnnouncements = async () => {
         try {
-          const res = await axiosInstance.get("/api/announcements");
+          const res = await axiosInstance.get("/announcements");
           const history = res.data.announcements.map(a => ({
             message: `${a.title}: ${a.message}`,
             time: new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
