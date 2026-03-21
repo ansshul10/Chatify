@@ -10,11 +10,17 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "https://chatify-j1v2.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
+      },
+      "/socket.io": {
+        target: "https://chatify-j1v2.onrender.com",
+        ws: true,
+        secure: true,
       },
     },
   },
