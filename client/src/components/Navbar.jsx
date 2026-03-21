@@ -95,7 +95,7 @@ const Navbar = ({ theme, toggleTheme }) => {
   useEffect(() => {
     if (isAuthenticated) {
       // Initialize Socket connection
-      socket.current = io("http://localhost:5000", { withCredentials: true });
+      socket.current = io("https://chatify-j1v2.onrender.com", { withCredentials: true });
 
       // Listen for broadcasts
       socket.current.on("new-announcement", (data) => {
