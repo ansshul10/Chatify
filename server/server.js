@@ -24,111 +24,106 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Allowed origins array (env + hardcoded fallback)
+// ✅ iOS Safari + All Browsers Compatible Origins
 const allowedOrigins = [
   process.env.CLIENT_URL || "https://chatify007.vercel.app",
   process.env.FRONTEND_URL || "https://chatify007.vercel.app",
+  "https://chatify007.vercel.app",
   "http://localhost:5173",
-  "https://chatify007.vercel.app"
+  "http://localhost:3000"  // Extra dev safety
 ];
 
-// ─── SOCKET.IO SETUP ──────────────────────────────────────────────────────────
+// ─── SOCKET.IO SETUP (iOS Optimized) ──────────────────────────────────────────
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, etc.)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log(`🔒 Socket CORS blocked: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+        console.log(`🔒 Socket Blocked: ${origin}`);
+        callback(new Error("CORS Denied"));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
   path: "/socket.io/",
-  transports: ['websocket', 'polling'],  // Render stability
-  pingTimeout: 60000,
-  pingInterval: 25000
+  transports: ['websocket', 'polling'],  // iOS fallback
+  pingTimeout: 30000,    // iOS aggressive
+  pingInterval: 10000,
+  maxHttpBufferSize: 1e6,
+  cookie: false  // Manual cookie handling
 });
 
-// Socket Authentication Middleware
+// 🔐 Socket Auth Middleware (Cookie + JWT)
 io.use((socket, next) => {
   try {
     const cookies = socket.handshake.headers.cookie || "";
     const token = cookies
       .split("; ")
-      .find((row) => row.startsWith("chatify_token="))
+      .find(row => row.startsWith("chatify_token="))
       ?.split("=")[1];
 
     if (!token) {
-      console.log("🔐 Socket: No auth token");
-      return next(new Error("Auth Error: No token"));
+      console.log("🔐 Socket: No token");
+      return next(new Error("Auth: No token"));
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.userId = decoded.userId;
-    console.log(`✅ Socket auth: User ${socket.userId}`);
+    console.log(`✅ Socket: User ${socket.userId} connected`);
     next();
   } catch (error) {
-    console.log("❌ Socket JWT error:", error.message);
-    next(new Error("Auth Error: Invalid token"));
+    console.log("❌ Socket Auth:", error.message);
+    next(new Error("Auth: Invalid token"));
   }
 });
 
 app.set("socketio", io);
 
 io.on("connection", (socket) => {
-  console.log(`🔌 Connected: User ${socket.userId}`);
+  console.log(`🔌 User ${socket.userId} connected (${socket.id.slice(0,8)})`);
   
-  // Auto-join private room
   if (socket.userId) socket.join(socket.userId);
 
-  // Typing indicators
-  socket.on("typing", ({ receiverId }) => {
-    socket.to(receiverId).emit("display_typing", { senderId: socket.userId });
-  });
-
-  socket.on("stop_typing", ({ receiverId }) => {
-    socket.to(receiverId).emit("hide_typing", { senderId: socket.userId });
-  });
+  // Real-time typing
+  socket.on("typing", ({ receiverId }) => socket.to(receiverId).emit("display_typing", { senderId: socket.userId }));
+  socket.on("stop_typing", ({ receiverId }) => socket.to(receiverId).emit("hide_typing", { senderId: socket.userId }));
 
   socket.on("disconnect", () => {
-    console.log(`🔌 Disconnected: User ${socket.userId}`);
+    console.log(`🔌 User ${socket.userId} disconnected`);
   });
 });
-// ──────────────────────────────────────────────────────────────────────────────
 
-// Global Middlewares
+// ─── GLOBAL MIDDLEWARES (iOS Cookie Optimized) ────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
+// 🚀 iOS Safari + Chrome + Firefox Compatible CORS
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log(`🔒 CORS blocked: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
+      console.log(`🔒 CORS Blocked: ${origin}`);
+      callback(new Error("CORS Denied"));
     }
   },
-  credentials: true,
+  credentials: true,  // 🔑 Cookies for iOS
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
 
-// Request Logger
+// 📊 Request Logger
 app.use((req, res, next) => {
-  console.log(`📡 ${new Date().toISOString()} ${req.method} ${req.originalUrl} [${req.ip}]`);
+  console.log(`📡 [${req.ip}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Routes
+// ─── ROUTES ──────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/profile", profileRoutes);
@@ -140,42 +135,47 @@ app.use("/api/support", supportRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/admin", adminRoutes);
 
-// Health endpoint for Render/Platform.sh
+// 🩺 Health Check (Render/Platform.sh)
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    cors: allowedOrigins[0]
+  });
 });
 
 // 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
+  res.status(404).json({ success: false, message: "Route Not Found" });
 });
 
-// Global Error Handler
+// 💥 Global Error Handler
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
-  console.error(`💥 ERROR ${status} ${req.method} ${req.originalUrl}:`, err.message);
+  console.error(`💥 ${status} ${req.method} ${req.originalUrl}:`, err.message);
   res.status(status).json({ 
     success: false, 
-    message: err.message || "Internal Server Error" 
+    message: err.message || "Server Error" 
   });
 });
 
-// 🚀 Start Server
+// 🚀 LAUNCH SEQUENCE
 const PORT = process.env.PORT || 5000;
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB Connected");
     server.listen(PORT, "0.0.0.0", () => {
-      console.log(`\n🚀 Server: http://localhost:${PORT}`);
-      console.log(`📡 Socket.IO: Ready for ${allowedOrigins[0]}`);
-      console.log(`🌐 CORS Allowed: ${allowedOrigins.join(', ')}`);
-      console.log(`✅ All systems operational!\n`);
+      console.log("\n🚀 Server LIVE:", `http://localhost:${PORT}`);
+      console.log("📡 Socket.IO:", allowedOrigins[0]);
+      console.log("🌐 iOS CORS:", allowedOrigins.join(", "));
+      console.log("✅ iOS/Android/Desktop READY!\n");
     });
   })
   .catch((err) => {
-    console.error("💥 MongoDB Error:", err.message);
+    console.error("💥 MongoDB FAILED:", err.message);
     process.exit(1);
   });
 
-export default app;  // Vercel support ke liye
+export default app;
