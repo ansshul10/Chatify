@@ -22,6 +22,8 @@ export const generateTokenAndSetCookie = (res, userId, rememberMe = false) => {
     path: "/",                        // Available across the entire site
     // NEVER set domain here when frontend & backend are on different TLDs
     // (vercel.app vs onrender.com) — it will break cookie setting
+    // ✅ iOS Safari + Chrome + Firefox + Android ALL SUPPORT
+    priority: isProduction ? "high" : "medium"  // Cookie priority boost
   });
 
   return token;
@@ -51,5 +53,6 @@ export const clearAuthCookie = (res) => {
     sameSite: isProduction ? "none" : "lax",
     maxAge: 0,
     path: "/",
+    priority: "high"
   });
 };
