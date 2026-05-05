@@ -1,0 +1,107 @@
+/* ── Cookie Consent Styles ────────────────── */
+.cookie-consent {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.cookie-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  padding: 32px;
+  max-width: 600px;
+  width: 100%;
+  pointer-events: auto;
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.cookie-card__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cookie-card__icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cookie-card__title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.cookie-card__desc {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.cookie-card__desc a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.cookie-card__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cookie-card__customize {
+  margin-top: 8px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cookie-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cookie-option__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.cookie-option__label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.cookie-option__desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .cookie-consent { bottom: 16px; left: 16px; right: 16px; }
+  .cookie-card { padding: 24px; }
+  .cookie-card__actions button { flex: 1; }
+}

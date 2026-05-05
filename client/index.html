@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- Primary Meta Tags -->
+  <title>Chatify</title>
+  <meta name="title" content="Chatify — Private Messenger" />
+  <meta name="description"
+    content="Experience the next generation of secure messaging. Chatify offers blazing-fast, end-to-end encrypted communication with zero tracking." />
+  <meta name="theme-color" content="#0066FF" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://chatify.io/" />
+  <meta property="og:title" content="Chatify — Private Messenger" />
+  <meta property="og:description" content="Blazing-fast, private real-time messenger with end-to-end encryption." />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://chatify.io/" />
+  <meta property="twitter:title" content="Chatify — Private Messenger" />
+  <meta property="twitter:description" content="Experience secure, private, and real-time communication." />
+  <meta property="twitter:image" content="/og-image.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    /* Premium Preloader Styles */
+    :root {
+      --splash-bg: #080808;
+      --splash-accent: #0066FF;
+    }
+
+    [data-theme="light"] {
+      --splash-bg: #F7F8FA;
+    }
+
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--splash-bg);
+      overflow: hidden;
+    }
+
+    #root:empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--splash-bg);
+    }
+
+    #root:empty::after {
+      content: '';
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(0, 102, 255, 0.1);
+      border-top-color: var(--splash-accent);
+      border-radius: 50%;
+      animation: splash-spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    #root:empty::before {
+      content: 'CHATIFY';
+      position: absolute;
+      bottom: 40px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      color: var(--splash-accent);
+      opacity: 0.5;
+      animation: splash-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes splash-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes splash-pulse {
+
+      0%,
+      100% {
+        opacity: 0.3;
+        transform: scale(0.98);
+      }
+
+      50% {
+        opacity: 0.6;
+        transform: scale(1.02);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
